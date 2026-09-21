@@ -1,0 +1,19 @@
+{
+  "name": "books",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "bookszerver.js",
+  "dependencies": {
+    "dotenv": "^18.0.0",
+    "express": "^5.2.1",
+    "mysql2": "^3.24.4",
+    "nodemon": "^3.1.14"
+  },
+  "scripts": {
+    "start": "nodemon bookszerver.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

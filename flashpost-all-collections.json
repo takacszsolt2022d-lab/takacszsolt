@@ -1,0 +1,24 @@
+{
+  "app": "Flashpost",
+  "version": "1.0",
+  "type": "all-collections",
+  "exportedDate": "16-Sep-2026 13:33:52",
+  "collections": [],
+  "requests": [],
+  "variables": [
+    {
+      "id": "8374855b-ccf6-475b-b73d-d2b8d393d856",
+      "name": "Global",
+      "createdTime": "16-Sep-2026 13:33:08",
+      "isActive": false,
+      "data": []
+    },
+    {
+      "id": "2eb808d6-cefa-452b-add9-a4c01da67abc",
+      "name": "Application",
+      "createdTime": "16-Sep-2026 13:33:08",
+      "isActive": true,
+      "data": []
+    }
+  ]
+}
