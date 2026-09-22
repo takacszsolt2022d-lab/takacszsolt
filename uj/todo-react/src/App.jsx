@@ -58,7 +58,41 @@ function FilterButton({ name, isPressed, onClick }) {
   );
 }
 
-function Todo({ task, toggleTaskCompleted, deleteTask }) {
+function Todo({
+  task,
+  toggleTaskCompleted,
+  deleteTask,
+  editTask,
+  saveTask,
+  cancelEdit,
+  isEditing,
+  editingName,
+  setEditingName,
+}) {
+  if (isEditing) {
+    return (
+      <li className="todo stack-small">
+        <div className="c-cb">
+          <input
+            type="text"
+            value={editingName}
+            onChange={(event) => setEditingName(event.target.value)}
+            aria-label={`Edit ${task.name}`}
+            autoFocus
+          />
+        </div>
+        <div className="btn-group">
+          <button type="button" className="btn" onClick={() => saveTask(task.id)}>
+            Save
+          </button>
+          <button type="button" className="btn btn__danger" onClick={cancelEdit}>
+            Cancel
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <li className="todo stack-small">
       <div className="c-cb">
@@ -73,7 +107,7 @@ function Todo({ task, toggleTaskCompleted, deleteTask }) {
         </label>
       </div>
       <div className="btn-group">
-        <button type="button" className="btn">
+        <button type="button" className="btn" onClick={() => editTask(task.id)}>
           Edit <span className="visually-hidden">{task.name}</span>
         </button>
         <button
@@ -90,6 +124,8 @@ function Todo({ task, toggleTaskCompleted, deleteTask }) {
 function App() {
   const [tasks, setTasks] = useState(initialTasks);
   const [filter, setFilter] = useState("all");
+  const [editingId, setEditingId] = useState(null);
+  const [editingName, setEditingName] = useState("");
 
   function addTask(name) {
     const newTask = {
@@ -111,6 +147,38 @@ function App() {
 
   function deleteTask(id) {
     setTasks((currentTasks) => currentTasks.filter((task) => task.id !== id));
+  }
+
+  function editTask(id) {
+    const taskToEdit = tasks.find((task) => task.id === id);
+
+    if (!taskToEdit) {
+      return;
+    }
+
+    setEditingId(id);
+    setEditingName(taskToEdit.name);
+  }
+
+  function saveTask(id) {
+    const trimmedName = editingName.trim();
+
+    if (!trimmedName) {
+      return;
+    }
+
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === id ? { ...task, name: trimmedName } : task,
+      ),
+    );
+    setEditingId(null);
+    setEditingName("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingName("");
   }
 
   const visibleTasks = tasks.filter((task) => {
@@ -160,6 +228,12 @@ function App() {
             task={task}
             toggleTaskCompleted={toggleTaskCompleted}
             deleteTask={deleteTask}
+            editTask={editTask}
+            saveTask={saveTask}
+            cancelEdit={cancelEdit}
+            isEditing={editingId === task.id}
+            editingName={editingName}
+            setEditingName={setEditingName}
           />
         ))}
       </ul>
