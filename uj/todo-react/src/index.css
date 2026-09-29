@@ -199,6 +199,19 @@ body {
 [class*="__lg"]:not(:last-child) {
   margin-bottom: 1rem;
 }
+.importance-control {
+  align-items: center;
+  display: flex;
+  gap: 1.2rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.importance-control input[type="range"] {
+  accent-color: #228bec;
+  cursor: pointer;
+  flex: 1;
+  min-width: 8rem;
+}
 @media screen and (width >= 620px) {
   [class*="__lg"] {
     font-size: 2.4rem;
@@ -222,6 +235,11 @@ body {
 }
 .todo-text:focus-visible {
   box-shadow: inset 0 0 0 2px;
+}
+.todo-importance {
+  color: #565656;
+  font-size: 1.4rem;
+  margin: 0 0 1rem 4rem;
 }
 /* End todo item styles */
 /* Checkbox styles */

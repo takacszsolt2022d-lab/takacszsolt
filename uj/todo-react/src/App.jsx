@@ -1,4 +1,16 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+function usePrevious(value) {
+  const [previousValue, setPreviousValue] = useState();
+  const [currentValue, setCurrentValue] = useState(value);
+
+  if (currentValue !== value) {
+    setPreviousValue(currentValue);
+    setCurrentValue(value);
+  }
+
+  return previousValue;
+}
 
 const initialTasks = [
   { id: "todo-0", name: "Eat", completed: true },
@@ -6,19 +18,82 @@ const initialTasks = [
   { id: "todo-2", name: "Repeat", completed: false },
 ];
 
+const FORBIDDEN_TASK_NAME = "react";
+const TASK_STORAGE_PREFIX = "todo-task:";
+const LEGACY_TASKS_STORAGE_KEY = "todo-react-tasks";
+
+function loadTasks() {
+  try {
+    const storedTasks = [];
+
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+
+      if (key?.startsWith(TASK_STORAGE_PREFIX)) {
+        const task = JSON.parse(localStorage.getItem(key));
+
+        if (
+          task &&
+          typeof task.id === "string" &&
+          typeof task.name === "string" &&
+          typeof task.completed === "boolean"
+        ) {
+          storedTasks.push(task);
+        }
+      }
+    }
+
+    if (storedTasks.length > 0) {
+      return storedTasks;
+    }
+
+    const savedTasks = localStorage.getItem(LEGACY_TASKS_STORAGE_KEY);
+    const parsedTasks = savedTasks ? JSON.parse(savedTasks) : null;
+
+    return Array.isArray(parsedTasks) ? parsedTasks : initialTasks;
+  } catch {
+    return initialTasks;
+  }
+}
+
+function validateTaskName(name) {
+  const trimmedName = name.trim();
+
+  if (!trimmedName) {
+    return "";
+  }
+
+  if (trimmedName.toLowerCase() === FORBIDDEN_TASK_NAME) {
+    return "Nem lehet react név, nem megengedett.";
+  }
+
+  return "";
+}
+
 function Form({ addTask }) {
   const [name, setName] = useState("");
+  const [importance, setImportance] = useState(3);
+  const [errorMessage, setErrorMessage] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
     const trimmedName = name.trim();
+    const validationError = validateTaskName(trimmedName);
 
-    if (!trimmedName) {
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
 
-    addTask(trimmedName);
+    if (!trimmedName) {
+      setErrorMessage("");
+      return;
+    }
+
+    addTask(trimmedName, importance);
     setName("");
+    setImportance(3);
+    setErrorMessage("");
   }
 
   return (
@@ -35,11 +110,35 @@ function Form({ addTask }) {
         name="text"
         autoComplete="off"
         value={name}
-        onChange={(event) => setName(event.target.value)}
+        onChange={(event) => {
+          setName(event.target.value);
+          if (errorMessage) {
+            setErrorMessage("");
+          }
+        }}
+        aria-invalid={Boolean(errorMessage)}
       />
+      <label className="importance-control" htmlFor="new-todo-importance">
+        <span>Fontosság: {importance} / 5</span>
+        <input
+          id="new-todo-importance"
+          type="range"
+          min="1"
+          max="5"
+          step="1"
+          value={importance}
+          onChange={(event) => setImportance(Number(event.target.value))}
+          aria-label="Fontosság"
+        />
+      </label>
       <button type="submit" className="btn btn__primary btn__lg">
         Add
       </button>
+      {errorMessage && (
+        <p role="alert" className="error-message">
+          {errorMessage}
+        </p>
+      )}
     </form>
   );
 }
@@ -69,6 +168,18 @@ function Todo({
   editingName,
   setEditingName,
 }) {
+  const editFieldRef = useRef(null);
+  const editButtonRef = useRef(null);
+  const wasEditing = usePrevious(isEditing);
+
+  useEffect(() => {
+    if (!wasEditing && isEditing) {
+      editFieldRef.current?.focus();
+    } else if (wasEditing && !isEditing) {
+      editButtonRef.current?.focus();
+    }
+  }, [wasEditing, isEditing]);
+
   if (isEditing) {
     return (
       <li className="todo stack-small">
@@ -78,7 +189,7 @@ function Todo({
             value={editingName}
             onChange={(event) => setEditingName(event.target.value)}
             aria-label={`Edit ${task.name}`}
-            autoFocus
+            ref={editFieldRef}
           />
         </div>
         <div className="btn-group">
@@ -106,8 +217,15 @@ function Todo({
           {task.name}
         </label>
       </div>
+      <p className="todo-importance">
+        Fontosság: {task.importance ?? 3} / 5
+      </p>
       <div className="btn-group">
-        <button type="button" className="btn" onClick={() => editTask(task.id)}>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => editTask(task.id)}
+          ref={editButtonRef}>
           Edit <span className="visually-hidden">{task.name}</span>
         </button>
         <button
@@ -122,15 +240,48 @@ function Todo({
 }
 
 function App() {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState(loadTasks);
   const [filter, setFilter] = useState("all");
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState("");
+  const listHeadingRef = useRef(null);
+  const previousTaskLength = usePrevious(tasks.length);
 
-  function addTask(name) {
+  useEffect(() => {
+    const storedTaskKeys = [];
+
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+
+      if (key?.startsWith(TASK_STORAGE_PREFIX)) {
+        storedTaskKeys.push(key);
+      }
+    }
+
+    storedTaskKeys.forEach((key) => localStorage.removeItem(key));
+    tasks.forEach((task) => {
+      localStorage.setItem(
+        `${TASK_STORAGE_PREFIX}${task.id}`,
+        JSON.stringify(task),
+      );
+    });
+    localStorage.removeItem(LEGACY_TASKS_STORAGE_KEY);
+  }, [tasks]);
+
+  useEffect(() => {
+    if (
+      previousTaskLength !== undefined &&
+      tasks.length < previousTaskLength
+    ) {
+      listHeadingRef.current?.focus();
+    }
+  }, [previousTaskLength, tasks.length]);
+
+  function addTask(name, importance) {
     const newTask = {
       id: `todo-${crypto.randomUUID()}`,
       name,
+      importance,
       completed: false,
     };
 
@@ -162,6 +313,11 @@ function App() {
 
   function saveTask(id) {
     const trimmedName = editingName.trim();
+    const validationError = validateTaskName(trimmedName);
+
+    if (validationError) {
+      return;
+    }
 
     if (!trimmedName) {
       return;
@@ -217,7 +373,9 @@ function App() {
           onClick={() => setFilter("completed")}
         />
       </div>
-      <h2 id="list-heading">{headingText}</h2>
+      <h2 id="list-heading" tabIndex={-1} ref={listHeadingRef}>
+        {headingText}
+      </h2>
       <ul
         role="list"
         className="todo-list stack-large stack-exception"
@@ -240,5 +398,7 @@ function App() {
     </div>
   );
 }
+
+
 
 export default App;
